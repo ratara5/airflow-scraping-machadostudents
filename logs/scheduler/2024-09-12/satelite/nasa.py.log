@@ -1,0 +1,26 @@
+[2024-09-12T01:18:10.985+0000] {processor.py:186} INFO - Started process (PID=1393) to work on /opt/airflow/dags/satelite/nasa.py
+[2024-09-12T01:18:10.986+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/satelite/nasa.py for tasks to queue
+[2024-09-12T01:18:10.989+0000] {logging_mixin.py:190} INFO - [2024-09-12T01:18:10.988+0000] {dagbag.py:587} INFO - Filling up the DagBag from /opt/airflow/dags/satelite/nasa.py
+[2024-09-12T01:18:11.010+0000] {processor.py:925} INFO - DAG(s) 'spacex' retrieved from /opt/airflow/dags/satelite/nasa.py
+[2024-09-12T01:18:11.275+0000] {logging_mixin.py:190} INFO - [2024-09-12T01:18:11.274+0000] {override.py:1858} INFO - Created Permission View: can edit on DAG:spacex
+[2024-09-12T01:18:11.302+0000] {logging_mixin.py:190} INFO - [2024-09-12T01:18:11.301+0000] {override.py:1858} INFO - Created Permission View: can delete on DAG:spacex
+[2024-09-12T01:18:11.317+0000] {logging_mixin.py:190} INFO - [2024-09-12T01:18:11.316+0000] {override.py:1858} INFO - Created Permission View: can read on DAG:spacex
+[2024-09-12T01:18:11.318+0000] {logging_mixin.py:190} INFO - [2024-09-12T01:18:11.318+0000] {dag.py:3211} INFO - Sync 1 DAGs
+[2024-09-12T01:18:11.343+0000] {logging_mixin.py:190} INFO - [2024-09-12T01:18:11.343+0000] {dag.py:3234} INFO - Creating ORM DAG for spacex
+[2024-09-12T01:18:11.366+0000] {logging_mixin.py:190} INFO - [2024-09-12T01:18:11.366+0000] {dag.py:4138} INFO - Setting next_dagrun for spacex to 2024-01-01 00:00:00+00:00, run_after=2024-01-01 00:45:00+00:00
+[2024-09-12T01:18:11.398+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/satelite/nasa.py took 0.426 seconds
+[2024-09-12T01:18:18.547+0000] {processor.py:186} INFO - Started process (PID=1395) to work on /opt/airflow/dags/satelite/nasa.py
+[2024-09-12T01:18:18.548+0000] {processor.py:914} INFO - Processing file /opt/airflow/dags/satelite/nasa.py for tasks to queue
+[2024-09-12T01:18:18.553+0000] {logging_mixin.py:190} INFO - [2024-09-12T01:18:18.550+0000] {dagbag.py:587} INFO - Filling up the DagBag from /opt/airflow/dags/satelite/nasa.py
+[2024-09-12T01:18:18.580+0000] {logging_mixin.py:190} INFO - [2024-09-12T01:18:18.570+0000] {dagbag.py:386} ERROR - Failed to import: /opt/airflow/dags/satelite/nasa.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 382, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/satelite/nasa.py", line 21, in <module>
+    python_callable=_generate_platzi_satelite_data)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NameError: name '_generate_platzi_satelite_data' is not defined
+[2024-09-12T01:18:18.588+0000] {processor.py:927} WARNING - No viable dags retrieved from /opt/airflow/dags/satelite/nasa.py
+[2024-09-12T01:18:18.672+0000] {processor.py:208} INFO - Processing /opt/airflow/dags/satelite/nasa.py took 0.143 seconds
