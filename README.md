@@ -42,11 +42,15 @@ bash<br>
 ```pip install --upgrade pip setuptools wheel```<br>
 ```pip install apache-airflow```
 
-### Add more directories in .env
+### Enable DockerOperator class
+bash<br>
+```pip install apache-airflow-providers-docker```
+
+### Add more directories in .env (optional)
 .env<br>
 ```AIRFLOW__CORE__DAGS_FOLDER=```
 
-### Add more directories in docker-compose.yaml
+### Add more directories in docker-compose.yaml (optional)
 docker-compose
 ```
 x-airflow-common:
@@ -59,7 +63,8 @@ x-airflow-common:
 ```
 
 ## Usage
-Previously, you must had built the images for scraping service and for postgres service
+Previously, you must had built the images for scraping service and for postgres service.<br>
+Warning!: There must not be containers based on these images running.
 
 ## Contribution
 
