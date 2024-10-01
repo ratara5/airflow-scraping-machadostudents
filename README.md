@@ -33,7 +33,7 @@ bash<br>
 ### if you experiment issues with virtual environment
 bash<br>
 ```deactivate # Exit from current environment, if it's active```<br>
-```rm -rf airflow-env  # Delete problematic virtaul environment ```<br>
+```rm -rf airflow-env  # Delete problematic virtual environment ```<br>
 ```python3 -m venv airflow-env```<br> 
 ```source airflow-env/bin/activate```
 

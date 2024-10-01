@@ -91,7 +91,7 @@ x-airflow-common:
     postgres:
       condition: service_healthy
   networks:
-    - internal_network
+    - airflow_internal_network
     - scraping_airflow_network
     
 
@@ -113,7 +113,7 @@ services:
       start_period: 5s
     restart: always
     networks:
-      - internal_network
+      - airflow_internal_network
       #- scraping_airflow_network
   
   pgadmin:
@@ -320,5 +320,5 @@ volumes:
 networks:
     scraping_airflow_network:
       external: true
-    internal_network:
+    airflow_internal_network:
 

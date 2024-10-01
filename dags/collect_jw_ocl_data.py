@@ -6,48 +6,52 @@ from airflow.operators.empty import EmptyOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.utils.trigger_rule import TriggerRule
 
-
 from datetime import datetime, date
 import docker
 
+from dotenv import load_dotenv
+import os
+
 def check_if_container_exists():
     client = docker.from_env()
-    container_name = "scraping_postgres_v2"
+    container_name = "scraping_postgres_test_v2" #scraping_postgres_test_v2
     try:
         container = client.containers.get(container_name)
         if container.status == 'exited':
-            return True  # El contenedor está detenido
+            return True  # The container exists and is stopped
         else:
-            return False  # El contenedor existe, pero no está detenido
+            return False  # The container exists, but is not stopped
     except docker.errors.NotFound:
-        return False  # El contenedor no existe
+        return False  # The container doesn't exist
 
 def decide_container_action(**kwargs):
     ti = kwargs['ti']
     container_exists = ti.xcom_pull(task_ids='check_container_exists')
     
     if container_exists:
-        return 'restart_postgres'  # Reiniciar el contenedor
+        return 'restart_postgres'  # Restart container
     else:
-        return 'run_scraping_postgres'  # Crear el contenedor
+        return 'run_scraping_postgres'  # Run container
 
 
 default_args={
-    "start_date": datetime(2024, 2, 1),
-    "end_date": datetime(2024, 2, 2),
+    "start_date": datetime(2024, 1, 1),
     "depends_on_past": False
 }
 
+load_dotenv('../config/jw_ocl.env')
+
 with DAG(dag_id="jw_ocl_guide",
          description="Collect Data Program OCL",
-         schedule_interval="0 10 10 2,4,6,8,10,12", # -> At 10 am of day 10th february, april, june, august, october, december
+         schedule_interval="0 10 10 2,4,6,8,10,12 *", # -> At 10 am of day 10th february, april, june, august, october, december
+         catchup=True, # Past instances will be not executed
          default_args=default_args,
          max_active_runs=1) as dag:
     
-    # Listar todas las tareas excepto clear_logs
+    # List all tasks except clear_logs
     tasks_to_clean = [task.task_id for task in dag.tasks if task.task_id != 'clear_logs']
 
-    # Crear el comando de limpieza
+    # Clear logs command
     clean_command = ' && '.join([f'rm -rf /opt/airflow/logs/{{{{ dag.dag_id }}}}/{{{{ task_id }}}}/*' for task_id in tasks_to_clean])
 
     clear_logs = BashOperator(
@@ -70,30 +74,30 @@ with DAG(dag_id="jw_ocl_guide",
 
     restart_postgres = BashOperator(
         task_id='restart_postgres',
-        bash_command="docker restart scraping_postgres_v2",
+        bash_command="docker restart scraping_postgres_test_v2", #scraping_postgres_v2
         dag=dag
     )
 
     run_scraping_postgres = DockerOperator(
         task_id='run_scraping_postgres',
-        image='my_postgres_image_v2:latest',  # La imagen de tu servicio de postgres en scraping
-        container_name='scraping_postgres_v2',
+        image='my_postgres_image_v2:latest',  # The image of your postgres service
+        container_name= 'scraping_postgres_test_v2', #'scraping_postgres_v2',
         #api_version='auto',
         auto_remove=False,
-        command="postgres",  # Comando para ejecutar en el contenedor
-        docker_url="unix://var/run/docker.sock",  # Conexión al Docker de la máquina host
-        network_mode="scraping_airflow_network",  # La red compartida entre los Compose
+        command="postgres",  # Command to execute in container
+        docker_url="unix://var/run/docker.sock",  # Connection to docker in host machine
+        network_mode="scraping_airflow_network",  # Shared network between containers
         mount_tmp_dir=False,
         environment={
-            'POSTGRES_USER': 'scraping_user',
-            'POSTGRES_PASSWORD': 'scraping_password',
-            'POSTGRES_DB': 'scraping_db'
+            'POSTGRES_USER': os.getenv('POSTGRES_USER'),
+            'POSTGRES_PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+            'POSTGRES_DB': os.getenv('POSTGRES_DB')
         }
     )
 
     check_postgres_ready = BashOperator(
         task_id='check_postgres_ready',
-        bash_command='until nc -z -v -w30 scraping_postgres_v2 5432; do echo "Waiting for PostgreSQL..."; sleep 5; done',
+        bash_command='until nc -z -v -w30 scraping_postgres_test_v2 5432; do echo "Waiting for PostgreSQL..."; sleep 5; done', #scraping_postgres_v2
         trigger_rule=TriggerRule.ALWAYS
         #dag=dag,
     )
@@ -120,23 +124,23 @@ with DAG(dag_id="jw_ocl_guide",
     """
     stop_scraping_postgres = BashOperator(
     task_id='stop_scraping_postgres',
-    bash_command="docker stop scraping_postgres_v2",
+    bash_command="docker stop scraping_postgres_test_v2", # scraping_postgres_test_v2
     """
 
     run_scraping_script = DockerOperator(
         task_id='run_scraping_script',
-        image='my_scraping_image_v2:latest',  # La imagen de tu servicio de scraping
+        image='my_scraping_image_v2:latest',  # The image of your scraping service
         #container_name='my_new_scraping_container_v2',
         #api_version='auto',
         auto_remove=True,
-        command="python /app/main.py",  # Comando para ejecutar en el contenedor
-        docker_url="unix://var/run/docker.sock",  # Conexión al Docker de la máquina host
-        network_mode="scraping_airflow_network",  # La red compartida entre los Compose
+        command="python /app/main.py", # Command to execute in container
+        docker_url="unix://var/run/docker.sock",  # Connection to docker in host machine
+        network_mode="scraping_airflow_network",  # Shared network between containers
         mount_tmp_dir=False,
         environment={
-            'POSTGRES_USER': 'scraping_user',
-            'POSTGRES_PASSWORD': 'scraping_password',
-            'POSTGRES_DB': 'scraping_db'
+            'POSTGRES_USER': os.getenv('POSTGRES_USER'),
+            'POSTGRES_PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+            'POSTGRES_DB': os.getenv('POSTGRES_DB')
         }
     )
 
@@ -148,7 +152,7 @@ with DAG(dag_id="jw_ocl_guide",
         
         #bash_command="docker exec scraping_postgres_v2 bash -c \"su postgres -c 'pg_ctl stop -D /var/lib/postgresql/data -m fast && until [ \$(docker inspect -f '{{ '{{' }}.State.Status{{ '}}' }}' scraping_postgres_v2) == 'exited' ]; do sleep 1; done'\""
 
-        bash_command="docker stop scraping_postgres_v2"
+        bash_command="docker stop scraping_postgres_test_v2" # scraping_postgres_v2
 
     )
 
