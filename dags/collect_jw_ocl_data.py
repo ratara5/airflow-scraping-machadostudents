@@ -5,12 +5,10 @@ from airflow.operators.python import BranchPythonOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.utils.trigger_rule import TriggerRule
+from airflow.models import Variable
 
 from datetime import datetime, date
 import docker
-
-from dotenv import load_dotenv
-import os
 
 def check_if_container_exists():
     client = docker.from_env()
@@ -34,12 +32,19 @@ def decide_container_action(**kwargs):
         return 'run_scraping_postgres'  # Run container
 
 
+
 default_args={
     "start_date": datetime(2024, 1, 1),
     "depends_on_past": False
 }
 
-load_dotenv('../config/jw_ocl.env')
+dag_config = Variable.get("collect_jw_ocl_data_config", deserialize_json=True)
+postgres_db = dag_config["postgres_db"]
+postgres_user = dag_config["postgres_user"]
+postgres_password = dag_config["postgres_password"]
+
+
+
 
 with DAG(dag_id="jw_ocl_guide",
          description="Collect Data Program OCL",
@@ -48,12 +53,19 @@ with DAG(dag_id="jw_ocl_guide",
          default_args=default_args,
          max_active_runs=1) as dag:
     
+    
+    
     # List all tasks except clear_logs
     tasks_to_clean = [task.task_id for task in dag.tasks if task.task_id != 'clear_logs']
 
     # Clear logs command
     clean_command = ' && '.join([f'rm -rf /opt/airflow/logs/{{{{ dag.dag_id }}}}/{{{{ task_id }}}}/*' for task_id in tasks_to_clean])
 
+    t1 = BashOperator(
+        task_id = 'show_vars',
+        bash_command=f'echo "{dag_config["postgres_user"]}"'
+    )
+    
     clear_logs = BashOperator(
         task_id='clear_logs',
         bash_command=clean_command,
@@ -89,9 +101,9 @@ with DAG(dag_id="jw_ocl_guide",
         network_mode="scraping_airflow_network",  # Shared network between containers
         mount_tmp_dir=False,
         environment={
-            'POSTGRES_USER': os.getenv('POSTGRES_USER'),
-            'POSTGRES_PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-            'POSTGRES_DB': os.getenv('POSTGRES_DB')
+            'POSTGRES_USER': postgres_user,# os.getenv('AIRFLOW_VAR_POSTGRES_USER'),
+            'POSTGRES_PASSWORD': postgres_password, # os.getenv('AIRFLOW_VAR_POSTGRES_PASSWORD'),
+            'POSTGRES_DB': postgres_db # os.getenv('AIRFLOW_VAR_POSTGRES_DB')
         }
     )
 
@@ -138,9 +150,9 @@ with DAG(dag_id="jw_ocl_guide",
         network_mode="scraping_airflow_network",  # Shared network between containers
         mount_tmp_dir=False,
         environment={
-            'POSTGRES_USER': os.getenv('POSTGRES_USER'),
-            'POSTGRES_PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-            'POSTGRES_DB': os.getenv('POSTGRES_DB')
+            'POSTGRES_USER': postgres_user, #os.getenv('AIRFLOW_VAR_POSTGRES_USER'),
+            'POSTGRES_PASSWORD': postgres_password, #os.getenv('AIRFLOW_VAR_POSTGRES_PASSWORD'),
+            'POSTGRES_DB': postgres_db #os.getenv('AIRFLOW_VAR_POSTGRES_DB')
         }
     )
 
@@ -156,5 +168,5 @@ with DAG(dag_id="jw_ocl_guide",
 
     )
 
-    clear_logs >> check_container_task >> branch_task
+    t1 >> clear_logs >> check_container_task >> branch_task
     branch_task >> [run_scraping_postgres, restart_postgres] >> check_postgres_ready >> run_scraping_script >> stop_postgres
