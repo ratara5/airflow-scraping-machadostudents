@@ -10,9 +10,9 @@ from airflow.models import Variable
 from datetime import datetime, date
 import docker
 
-def check_if_container_exists():
+def check_if_container_exists(container_name):
     client = docker.from_env()
-    container_name = "scraping_postgres_test_v2" #scraping_postgres_test_v2
+    # container_name = "scraping_postgres_test_v2"
     try:
         container = client.containers.get(container_name)
         if container.status == 'exited':
@@ -39,6 +39,7 @@ default_args={
 }
 
 dag_config = Variable.get("collect_jw_ocl_data_config", deserialize_json=True)
+postgres_host = dag_config["postgres_host"]
 postgres_db = dag_config["postgres_db"]
 postgres_user = dag_config["postgres_user"]
 postgres_password = dag_config["postgres_password"]
@@ -49,7 +50,7 @@ postgres_password = dag_config["postgres_password"]
 with DAG(dag_id="jw_ocl_guide",
          description="Collect Data Program OCL",
          schedule_interval="0 10 10 2,4,6,8,10,12 *", # -> At 10 am of day 10th february, april, june, august, october, december
-         catchup=True, # Past instances will be not executed
+         catchup=False, # If False -> past instances will be not executed
          default_args=default_args,
          max_active_runs=1) as dag:
     
@@ -63,7 +64,7 @@ with DAG(dag_id="jw_ocl_guide",
 
     t1 = BashOperator(
         task_id = 'show_vars',
-        bash_command=f'echo "{dag_config["postgres_user"]}"'
+        bash_command=f'echo "{dag_config}"'
     )
     
     clear_logs = BashOperator(
@@ -74,6 +75,7 @@ with DAG(dag_id="jw_ocl_guide",
     check_container_task = PythonOperator(
         task_id="check_container_exists",
         python_callable=check_if_container_exists,
+        op_kwargs={'container_name':f'{postgres_host}'},
         dag=dag
     )
 
@@ -86,14 +88,14 @@ with DAG(dag_id="jw_ocl_guide",
 
     restart_postgres = BashOperator(
         task_id='restart_postgres',
-        bash_command="docker restart scraping_postgres_test_v2", #scraping_postgres_v2
+        bash_command=f'docker restart {postgres_host}', #scraping_postgres_v2
         dag=dag
     )
 
     run_scraping_postgres = DockerOperator(
         task_id='run_scraping_postgres',
         image='my_postgres_image_v2:latest',  # The image of your postgres service
-        container_name= 'scraping_postgres_test_v2', #'scraping_postgres_v2',
+        container_name=postgres_host, #'scraping_postgres_v2',
         #api_version='auto',
         auto_remove=False,
         command="postgres",  # Command to execute in container
@@ -109,7 +111,7 @@ with DAG(dag_id="jw_ocl_guide",
 
     check_postgres_ready = BashOperator(
         task_id='check_postgres_ready',
-        bash_command='until nc -z -v -w30 scraping_postgres_test_v2 5432; do echo "Waiting for PostgreSQL..."; sleep 5; done', #scraping_postgres_v2
+        bash_command=f'until nc -z -v -w30 {postgres_host} 5432; do echo "Waiting for PostgreSQL..."; sleep 5; done', #scraping_postgres_v2
         trigger_rule=TriggerRule.ALWAYS
         #dag=dag,
     )
@@ -164,7 +166,7 @@ with DAG(dag_id="jw_ocl_guide",
         
         #bash_command="docker exec scraping_postgres_v2 bash -c \"su postgres -c 'pg_ctl stop -D /var/lib/postgresql/data -m fast && until [ \$(docker inspect -f '{{ '{{' }}.State.Status{{ '}}' }}' scraping_postgres_v2) == 'exited' ]; do sleep 1; done'\""
 
-        bash_command="docker stop scraping_postgres_test_v2" # scraping_postgres_v2
+        bash_command=f'docker stop {postgres_host}' # scraping_postgres_v2
 
     )
 
